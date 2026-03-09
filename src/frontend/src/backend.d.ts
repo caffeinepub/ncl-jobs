@@ -12,7 +12,26 @@ export interface http_request_result {
     body: Uint8Array;
     headers: Array<http_header>;
 }
+export type PayoutMethod = {
+    __kind__: "btc";
+    btc: {
+        address: string;
+    };
+} | {
+    __kind__: "giftCard";
+    giftCard: {
+        cardType: string;
+        email: string;
+    };
+} | {
+    __kind__: "paypal";
+    paypal: {
+        email: string;
+    };
+};
 export interface Application {
+    payoutStatus: Variant_pending_completed_processing;
+    payoutMethod: PayoutMethod;
     name: string;
     whatsapp: string;
     submittedAt: bigint;
@@ -93,6 +112,11 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export enum Variant_pending_completed_processing {
+    pending = "pending",
+    completed = "completed",
+    processing = "processing"
+}
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
@@ -106,6 +130,7 @@ export interface backendInterface {
     isStripeConfigured(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
-    submitApplication(name: string, email: string, whatsapp: string, position: string, message: string, paymentIntentId: string): Promise<SubmitApplicationResult>;
+    submitApplication(name: string, email: string, whatsapp: string, position: string, message: string, paymentIntentId: string, payoutMethod: PayoutMethod): Promise<SubmitApplicationResult>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
+    updatePayoutStatus(email: string, position: string, newStatus: Variant_pending_completed_processing): Promise<boolean>;
 }

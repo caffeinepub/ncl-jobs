@@ -2,9 +2,12 @@ import { Toaster } from "@/components/ui/sonner";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import type { PayoutMethod } from "./backend";
 import AdminSection from "./components/AdminSection";
 import ApplicationForm from "./components/ApplicationForm";
+import type { PayoutFormData } from "./components/ApplicationForm";
 import BenefitsSection from "./components/BenefitsSection";
+import ConfirmationView from "./components/ConfirmationView";
 import HeroSection from "./components/HeroSection";
 import JobsSection from "./components/JobsSection";
 import SiteFooter from "./components/SiteFooter";
@@ -24,12 +27,37 @@ export type FormData = {
 };
 
 const FORM_STORAGE_KEY = "ncl_application_form_data";
+const PAYOUT_STORAGE_KEY = "ncl_payout_data";
+
+function payoutFormDataToPayoutMethod(
+  data: PayoutFormData,
+): PayoutMethod | null {
+  if (data.method === "btc") {
+    return { __kind__: "btc", btc: { address: data.btcAddress } };
+  }
+  if (data.method === "paypal") {
+    return { __kind__: "paypal", paypal: { email: data.paypalEmail } };
+  }
+  if (data.method === "giftCard") {
+    return {
+      __kind__: "giftCard",
+      giftCard: { cardType: data.giftCardType, email: data.giftCardEmail },
+    };
+  }
+  return null;
+}
 
 export default function App() {
   const formRef = useRef<HTMLDivElement>(null);
   const [appSubmitted, setAppSubmitted] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Confirmation data
+  const [confirmedName, setConfirmedName] = useState<string>("");
+  const [confirmedPosition, setConfirmedPosition] = useState<string>("");
+  const [confirmedPayoutMethod, setConfirmedPayoutMethod] =
+    useState<PayoutMethod | null>(null);
 
   const { actor, isFetching: actorFetching } = useActor();
   const getStripeSessionStatus = useGetStripeSessionStatus();
@@ -52,6 +80,7 @@ export default function App() {
     if (payment === "success" && sessionId) {
       setProcessingPayment(true);
       const storedData = localStorage.getItem(FORM_STORAGE_KEY);
+      const storedPayout = localStorage.getItem(PAYOUT_STORAGE_KEY);
 
       if (!storedData) {
         setProcessingPayment(false);
@@ -59,7 +88,21 @@ export default function App() {
         return;
       }
 
+      if (!storedPayout) {
+        setProcessingPayment(false);
+        setPaymentError("Payout data not found. Please apply again.");
+        return;
+      }
+
       const formData: FormData = JSON.parse(storedData);
+      const payoutFormData: PayoutFormData = JSON.parse(storedPayout);
+      const payoutMethod = payoutFormDataToPayoutMethod(payoutFormData);
+
+      if (!payoutMethod) {
+        setProcessingPayment(false);
+        setPaymentError("Invalid payout method. Please apply again.");
+        return;
+      }
 
       getStripeStatusAsync(sessionId)
         .then((status) => {
@@ -74,12 +117,17 @@ export default function App() {
               position: formData.position,
               message: formData.message,
               paymentIntentId,
+              payoutMethod,
             })
               .then((result) => {
                 setProcessingPayment(false);
                 if (result.__kind__ === "ok") {
                   setAppSubmitted(true);
+                  setConfirmedName(formData.name);
+                  setConfirmedPosition(formData.position);
+                  setConfirmedPayoutMethod(payoutMethod);
                   localStorage.removeItem(FORM_STORAGE_KEY);
+                  localStorage.removeItem(PAYOUT_STORAGE_KEY);
                   toast.success("Application submitted successfully!");
                   // Clean URL
                   window.history.replaceState({}, "", window.location.pathname);
@@ -92,6 +140,7 @@ export default function App() {
                 } else if (result.__kind__ === "duplicateApplication") {
                   setAppSubmitted(true);
                   localStorage.removeItem(FORM_STORAGE_KEY);
+                  localStorage.removeItem(PAYOUT_STORAGE_KEY);
                   window.history.replaceState({}, "", window.location.pathname);
                 } else {
                   setPaymentError(
@@ -140,12 +189,20 @@ export default function App() {
         <JobsSection onApplyClick={scrollToForm} />
 
         <div ref={formRef}>
-          <ApplicationForm
-            appSubmitted={appSubmitted}
-            processingPayment={processingPayment}
-            paymentError={paymentError}
-            onPaymentErrorClear={() => setPaymentError(null)}
-          />
+          {appSubmitted && confirmedPayoutMethod ? (
+            <ConfirmationView
+              name={confirmedName}
+              position={confirmedPosition}
+              payoutMethod={confirmedPayoutMethod}
+            />
+          ) : (
+            <ApplicationForm
+              appSubmitted={appSubmitted}
+              processingPayment={processingPayment}
+              paymentError={paymentError}
+              onPaymentErrorClear={() => setPaymentError(null)}
+            />
+          )}
         </div>
 
         <AdminSection />

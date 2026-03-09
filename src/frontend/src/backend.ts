@@ -94,7 +94,26 @@ export interface http_request_result {
     body: Uint8Array;
     headers: Array<http_header>;
 }
+export type PayoutMethod = {
+    __kind__: "btc";
+    btc: {
+        address: string;
+    };
+} | {
+    __kind__: "giftCard";
+    giftCard: {
+        cardType: string;
+        email: string;
+    };
+} | {
+    __kind__: "paypal";
+    paypal: {
+        email: string;
+    };
+};
 export interface Application {
+    payoutStatus: Variant_pending_completed_processing;
+    payoutMethod: PayoutMethod;
     name: string;
     whatsapp: string;
     submittedAt: bigint;
@@ -175,6 +194,11 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export enum Variant_pending_completed_processing {
+    pending = "pending",
+    completed = "completed",
+    processing = "processing"
+}
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
@@ -189,10 +213,11 @@ export interface backendInterface {
     isStripeConfigured(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
-    submitApplication(name: string, email: string, whatsapp: string, position: string, message: string, paymentIntentId: string): Promise<SubmitApplicationResult>;
+    submitApplication(name: string, email: string, whatsapp: string, position: string, message: string, paymentIntentId: string, payoutMethod: PayoutMethod): Promise<SubmitApplicationResult>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
+    updatePayoutStatus(email: string, position: string, newStatus: Variant_pending_completed_processing): Promise<boolean>;
 }
-import type { CreatePaymentResult as _CreatePaymentResult, StripeSessionStatus as _StripeSessionStatus, SubmitApplicationResult as _SubmitApplicationResult, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { Application as _Application, CreatePaymentResult as _CreatePaymentResult, PayoutMethod as _PayoutMethod, StripeSessionStatus as _StripeSessionStatus, SubmitApplicationResult as _SubmitApplicationResult, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -255,70 +280,70 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getApplications();
-                return result;
+                return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getApplications();
-            return result;
+            return from_candid_vec_n5(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n6(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n12(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n6(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n12(this._uploadFile, this._downloadFile, result);
         }
     }
     async getStripeSessionStatus(arg0: string): Promise<StripeSessionStatus> {
         if (this.processError) {
             try {
                 const result = await this.actor.getStripeSessionStatus(arg0);
-                return from_candid_StripeSessionStatus_n8(this._uploadFile, this._downloadFile, result);
+                return from_candid_StripeSessionStatus_n14(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getStripeSessionStatus(arg0);
-            return from_candid_StripeSessionStatus_n8(this._uploadFile, this._downloadFile, result);
+            return from_candid_StripeSessionStatus_n14(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -377,18 +402,18 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async submitApplication(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<SubmitApplicationResult> {
+    async submitApplication(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: PayoutMethod): Promise<SubmitApplicationResult> {
         if (this.processError) {
             try {
-                const result = await this.actor.submitApplication(arg0, arg1, arg2, arg3, arg4, arg5);
-                return from_candid_SubmitApplicationResult_n12(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.submitApplication(arg0, arg1, arg2, arg3, arg4, arg5, to_candid_PayoutMethod_n18(this._uploadFile, this._downloadFile, arg6));
+                return from_candid_SubmitApplicationResult_n20(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.submitApplication(arg0, arg1, arg2, arg3, arg4, arg5);
-            return from_candid_SubmitApplicationResult_n12(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.submitApplication(arg0, arg1, arg2, arg3, arg4, arg5, to_candid_PayoutMethod_n18(this._uploadFile, this._downloadFile, arg6));
+            return from_candid_SubmitApplicationResult_n20(this._uploadFile, this._downloadFile, result);
         }
     }
     async transform(arg0: TransformationInput): Promise<TransformationOutput> {
@@ -405,26 +430,46 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async updatePayoutStatus(arg0: string, arg1: string, arg2: Variant_pending_completed_processing): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updatePayoutStatus(arg0, arg1, to_candid_variant_n22(this._uploadFile, this._downloadFile, arg2));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updatePayoutStatus(arg0, arg1, to_candid_variant_n22(this._uploadFile, this._downloadFile, arg2));
+            return result;
+        }
+    }
+}
+function from_candid_Application_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Application): Application {
+    return from_candid_record_n7(_uploadFile, _downloadFile, value);
 }
 function from_candid_CreatePaymentResult_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CreatePaymentResult): CreatePaymentResult {
     return from_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
-function from_candid_StripeSessionStatus_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _StripeSessionStatus): StripeSessionStatus {
-    return from_candid_variant_n9(_uploadFile, _downloadFile, value);
+function from_candid_PayoutMethod_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PayoutMethod): PayoutMethod {
+    return from_candid_variant_n10(_uploadFile, _downloadFile, value);
 }
-function from_candid_SubmitApplicationResult_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SubmitApplicationResult): SubmitApplicationResult {
+function from_candid_StripeSessionStatus_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _StripeSessionStatus): StripeSessionStatus {
+    return from_candid_variant_n15(_uploadFile, _downloadFile, value);
+}
+function from_candid_SubmitApplicationResult_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SubmitApplicationResult): SubmitApplicationResult {
+    return from_candid_variant_n21(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n13(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n7(_uploadFile, _downloadFile, value);
-}
-function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
+function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_opt_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     userPrincipal: [] | [string];
     response: string;
 }): {
@@ -432,11 +477,129 @@ function from_candid_record_n10(_uploadFile: (file: ExternalBlob) => Promise<Uin
     response: string;
 } {
     return {
-        userPrincipal: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.userPrincipal)),
+        userPrincipal: record_opt_to_undefined(from_candid_opt_n17(_uploadFile, _downloadFile, value.userPrincipal)),
         response: value.response
     };
 }
+function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    payoutStatus: {
+        pending: null;
+    } | {
+        completed: null;
+    } | {
+        processing: null;
+    };
+    payoutMethod: _PayoutMethod;
+    name: string;
+    whatsapp: string;
+    submittedAt: bigint;
+    email: string;
+    message: string;
+    position: string;
+    paymentIntentId: string;
+}): {
+    payoutStatus: Variant_pending_completed_processing;
+    payoutMethod: PayoutMethod;
+    name: string;
+    whatsapp: string;
+    submittedAt: bigint;
+    email: string;
+    message: string;
+    position: string;
+    paymentIntentId: string;
+} {
+    return {
+        payoutStatus: from_candid_variant_n8(_uploadFile, _downloadFile, value.payoutStatus),
+        payoutMethod: from_candid_PayoutMethod_n9(_uploadFile, _downloadFile, value.payoutMethod),
+        name: value.name,
+        whatsapp: value.whatsapp,
+        submittedAt: value.submittedAt,
+        email: value.email,
+        message: value.message,
+        position: value.position,
+        paymentIntentId: value.paymentIntentId
+    };
+}
+function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    btc: {
+        address: string;
+    };
+} | {
+    giftCard: {
+        cardType: string;
+        email: string;
+    };
+} | {
+    paypal: {
+        email: string;
+    };
+}): {
+    __kind__: "btc";
+    btc: {
+        address: string;
+    };
+} | {
+    __kind__: "giftCard";
+    giftCard: {
+        cardType: string;
+        email: string;
+    };
+} | {
+    __kind__: "paypal";
+    paypal: {
+        email: string;
+    };
+} {
+    return "btc" in value ? {
+        __kind__: "btc",
+        btc: value.btc
+    } : "giftCard" in value ? {
+        __kind__: "giftCard",
+        giftCard: value.giftCard
+    } : "paypal" in value ? {
+        __kind__: "paypal",
+        paypal: value.paypal
+    } : value;
+}
 function from_candid_variant_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    admin: null;
+} | {
+    user: null;
+} | {
+    guest: null;
+}): UserRole {
+    return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
+}
+function from_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    completed: {
+        userPrincipal: [] | [string];
+        response: string;
+    };
+} | {
+    failed: {
+        error: string;
+    };
+}): {
+    __kind__: "completed";
+    completed: {
+        userPrincipal?: string;
+        response: string;
+    };
+} | {
+    __kind__: "failed";
+    failed: {
+        error: string;
+    };
+} {
+    return "completed" in value ? {
+        __kind__: "completed",
+        completed: from_candid_record_n16(_uploadFile, _downloadFile, value.completed)
+    } : "failed" in value ? {
+        __kind__: "failed",
+        failed: value.failed
+    } : value;
+}
+function from_candid_variant_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     ok: null;
 } | {
     submissionError: string;
@@ -510,46 +673,61 @@ function from_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uin
         invalidAmount: value.invalidAmount
     } : value;
 }
-function from_candid_variant_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    admin: null;
+function from_candid_variant_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    pending: null;
 } | {
-    user: null;
+    completed: null;
 } | {
-    guest: null;
-}): UserRole {
-    return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
+    processing: null;
+}): Variant_pending_completed_processing {
+    return "pending" in value ? Variant_pending_completed_processing.pending : "completed" in value ? Variant_pending_completed_processing.completed : "processing" in value ? Variant_pending_completed_processing.processing : value;
 }
-function from_candid_variant_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    completed: {
-        userPrincipal: [] | [string];
-        response: string;
-    };
-} | {
-    failed: {
-        error: string;
-    };
-}): {
-    __kind__: "completed";
-    completed: {
-        userPrincipal?: string;
-        response: string;
-    };
-} | {
-    __kind__: "failed";
-    failed: {
-        error: string;
-    };
-} {
-    return "completed" in value ? {
-        __kind__: "completed",
-        completed: from_candid_record_n10(_uploadFile, _downloadFile, value.completed)
-    } : "failed" in value ? {
-        __kind__: "failed",
-        failed: value.failed
-    } : value;
+function from_candid_vec_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Application>): Array<Application> {
+    return value.map((x)=>from_candid_Application_n6(_uploadFile, _downloadFile, x));
+}
+function to_candid_PayoutMethod_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: PayoutMethod): _PayoutMethod {
+    return to_candid_variant_n19(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n2(_uploadFile, _downloadFile, value);
+}
+function to_candid_variant_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    __kind__: "btc";
+    btc: {
+        address: string;
+    };
+} | {
+    __kind__: "giftCard";
+    giftCard: {
+        cardType: string;
+        email: string;
+    };
+} | {
+    __kind__: "paypal";
+    paypal: {
+        email: string;
+    };
+}): {
+    btc: {
+        address: string;
+    };
+} | {
+    giftCard: {
+        cardType: string;
+        email: string;
+    };
+} | {
+    paypal: {
+        email: string;
+    };
+} {
+    return value.__kind__ === "btc" ? {
+        btc: value.btc
+    } : value.__kind__ === "giftCard" ? {
+        giftCard: value.giftCard
+    } : value.__kind__ === "paypal" ? {
+        paypal: value.paypal
+    } : value;
 }
 function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
     admin: null;
@@ -564,6 +742,21 @@ function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         user: null
     } : value == UserRole.guest ? {
         guest: null
+    } : value;
+}
+function to_candid_variant_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Variant_pending_completed_processing): {
+    pending: null;
+} | {
+    completed: null;
+} | {
+    processing: null;
+} {
+    return value == Variant_pending_completed_processing.pending ? {
+        pending: null
+    } : value == Variant_pending_completed_processing.completed ? {
+        completed: null
+    } : value == Variant_pending_completed_processing.processing ? {
+        processing: null
     } : value;
 }
 export interface CreateActorOptions {

@@ -25,7 +25,18 @@ export const CreatePaymentResult = IDL.Variant({
   'paymentError' : IDL.Text,
   'invalidAmount' : IDL.Null,
 });
+export const PayoutMethod = IDL.Variant({
+  'btc' : IDL.Record({ 'address' : IDL.Text }),
+  'giftCard' : IDL.Record({ 'cardType' : IDL.Text, 'email' : IDL.Text }),
+  'paypal' : IDL.Record({ 'email' : IDL.Text }),
+});
 export const Application = IDL.Record({
+  'payoutStatus' : IDL.Variant({
+    'pending' : IDL.Null,
+    'completed' : IDL.Null,
+    'processing' : IDL.Null,
+  }),
+  'payoutMethod' : PayoutMethod,
   'name' : IDL.Text,
   'whatsapp' : IDL.Text,
   'submittedAt' : IDL.Int,
@@ -95,7 +106,15 @@ export const idlService = IDL.Service({
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
   'submitApplication' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        PayoutMethod,
+      ],
       [SubmitApplicationResult],
       [],
     ),
@@ -103,6 +122,19 @@ export const idlService = IDL.Service({
       [TransformationInput],
       [TransformationOutput],
       ['query'],
+    ),
+  'updatePayoutStatus' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Variant({
+          'pending' : IDL.Null,
+          'completed' : IDL.Null,
+          'processing' : IDL.Null,
+        }),
+      ],
+      [IDL.Bool],
+      [],
     ),
 });
 
@@ -126,7 +158,18 @@ export const idlFactory = ({ IDL }) => {
     'paymentError' : IDL.Text,
     'invalidAmount' : IDL.Null,
   });
+  const PayoutMethod = IDL.Variant({
+    'btc' : IDL.Record({ 'address' : IDL.Text }),
+    'giftCard' : IDL.Record({ 'cardType' : IDL.Text, 'email' : IDL.Text }),
+    'paypal' : IDL.Record({ 'email' : IDL.Text }),
+  });
   const Application = IDL.Record({
+    'payoutStatus' : IDL.Variant({
+      'pending' : IDL.Null,
+      'completed' : IDL.Null,
+      'processing' : IDL.Null,
+    }),
+    'payoutMethod' : PayoutMethod,
     'name' : IDL.Text,
     'whatsapp' : IDL.Text,
     'submittedAt' : IDL.Int,
@@ -193,7 +236,15 @@ export const idlFactory = ({ IDL }) => {
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
     'submitApplication' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          PayoutMethod,
+        ],
         [SubmitApplicationResult],
         [],
       ),
@@ -201,6 +252,19 @@ export const idlFactory = ({ IDL }) => {
         [TransformationInput],
         [TransformationOutput],
         ['query'],
+      ),
+    'updatePayoutStatus' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Variant({
+            'pending' : IDL.Null,
+            'completed' : IDL.Null,
+            'processing' : IDL.Null,
+          }),
+        ],
+        [IDL.Bool],
+        [],
       ),
   });
 };

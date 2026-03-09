@@ -11,6 +11,10 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export interface Application {
+  'payoutStatus' : { 'pending' : null } |
+    { 'completed' : null } |
+    { 'processing' : null },
+  'payoutMethod' : PayoutMethod,
   'name' : string,
   'whatsapp' : string,
   'submittedAt' : bigint,
@@ -22,6 +26,9 @@ export interface Application {
 export type CreatePaymentResult = { 'ok' : { 'clientSecret' : string } } |
   { 'paymentError' : string } |
   { 'invalidAmount' : null };
+export type PayoutMethod = { 'btc' : { 'address' : string } } |
+  { 'giftCard' : { 'cardType' : string, 'email' : string } } |
+  { 'paypal' : { 'email' : string } };
 export interface ShoppingItem {
   'productName' : string,
   'currency' : string,
@@ -79,10 +86,20 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
   'submitApplication' : ActorMethod<
-    [string, string, string, string, string, string],
+    [string, string, string, string, string, string, PayoutMethod],
     SubmitApplicationResult
   >,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updatePayoutStatus' : ActorMethod<
+    [
+      string,
+      string,
+      { 'pending' : null } |
+        { 'completed' : null } |
+        { 'processing' : null },
+    ],
+    boolean
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

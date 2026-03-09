@@ -1,15 +1,17 @@
 import Time "mo:core/Time";
 import Int "mo:core/Int";
 import Array "mo:core/Array";
-import Text "mo:core/Text";
 import Order "mo:core/Order";
+import Map "mo:core/Map";
+import Text "mo:core/Text";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
-import Map "mo:core/Map";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 import Stripe "stripe/stripe";
+
 import OutCall "http-outcalls/outcall";
+
 
 actor {
   // Authorization
@@ -65,7 +67,10 @@ actor {
     };
   };
 
-  public func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
+  public shared ({ caller }) func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can check session status");
+    };
     await Stripe.getSessionStatus(getStripeConfiguration(), sessionId, transform);
   };
 
@@ -74,6 +79,9 @@ actor {
     successUrl : Text,
     cancelUrl : Text
   ) : async Text {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can create checkout sessions");
+    };
     await Stripe.createCheckoutSession(
       getStripeConfiguration(),
       caller,
@@ -88,6 +96,13 @@ actor {
     OutCall.transform(input);
   };
 
+  // Payout Types
+  public type PayoutMethod = {
+    #btc : { address : Text };
+    #paypal : { email : Text };
+    #giftCard : { cardType : Text; email : Text };
+  };
+
   // Application Data
   public type Application = {
     name : Text;
@@ -97,6 +112,12 @@ actor {
     message : Text;
     paymentIntentId : Text;
     submittedAt : Int;
+    payoutMethod : PayoutMethod;
+    payoutStatus : {
+      #pending;
+      #processing;
+      #completed;
+    };
   };
 
   var applications : [Application] = [];
@@ -124,7 +145,9 @@ actor {
   };
 
   public shared ({ caller }) func createPaymentIntent(amount : Nat) : async CreatePaymentResult {
-    // No authorization check
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can create payment intents");
+    };
     if (amount != 2000) { return #invalidAmount };
     let dummyClientSecret = "dummy_client_secret_" # amount.toText();
     #ok { clientSecret = dummyClientSecret };
@@ -136,8 +159,12 @@ actor {
     whatsapp : Text,
     position : Text,
     message : Text,
-    paymentIntentId : Text
+    paymentIntentId : Text,
+    payoutMethod : PayoutMethod
   ) : async SubmitApplicationResult {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can submit applications");
+    };
     if (name == "" or email == "" or whatsapp == "" or position == "" or paymentIntentId == "") {
       return #missingFields;
     };
@@ -154,14 +181,40 @@ actor {
       message;
       paymentIntentId;
       submittedAt = Time.now();
+      payoutMethod;
+      payoutStatus = #pending;
     };
 
     applications := applications.concat([newApplication]);
     #ok;
   };
 
+  public shared ({ caller }) func updatePayoutStatus(email : Text, position : Text, newStatus : { #pending; #processing; #completed }) : async Bool {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can update payout status");
+    };
+
+    var updated = false;
+    let updatedApplications = applications.map(
+      func(app) {
+        if (app.email == email and app.position == position) {
+          updated := true;
+          {
+            app with
+            payoutStatus = newStatus;
+          };
+        } else {
+          app;
+        };
+      }
+    );
+
+    applications := updatedApplications;
+    updated;
+  };
+
   public query ({ caller }) func getApplications() : async [Application] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can view applications");
     };
 

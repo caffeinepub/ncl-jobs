@@ -1,9 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
   Application,
+  PayoutMethod,
   ShoppingItem,
   StripeSessionStatus,
   SubmitApplicationResult,
+  Variant_pending_completed_processing,
 } from "../backend";
 import { useActor } from "./useActor";
 
@@ -83,6 +85,7 @@ export function useSubmitApplication() {
       position,
       message,
       paymentIntentId,
+      payoutMethod,
     }: {
       name: string;
       email: string;
@@ -90,6 +93,7 @@ export function useSubmitApplication() {
       position: string;
       message: string;
       paymentIntentId: string;
+      payoutMethod: PayoutMethod;
     }): Promise<SubmitApplicationResult> => {
       if (!actor) throw new Error("Actor not available");
       return actor.submitApplication(
@@ -99,6 +103,7 @@ export function useSubmitApplication() {
         position,
         message,
         paymentIntentId,
+        payoutMethod,
       );
     },
   });
@@ -113,5 +118,23 @@ export function useIsStripeConfigured() {
       return actor.isStripeConfigured();
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+export function useUpdatePayoutStatus() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async ({
+      email,
+      position,
+      newStatus,
+    }: {
+      email: string;
+      position: string;
+      newStatus: Variant_pending_completed_processing;
+    }): Promise<boolean> => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.updatePayoutStatus(email, position, newStatus);
+    },
   });
 }

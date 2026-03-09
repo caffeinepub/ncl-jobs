@@ -1,5 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -13,17 +20,29 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
   ChevronUp,
+  Coins,
+  CreditCard,
   Loader2,
   LogIn,
   LogOut,
+  Mail,
   RefreshCw,
   Shield,
   Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import type {
+  Application,
+  PayoutMethod,
+  Variant_pending_completed_processing,
+} from "../backend";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useGetApplications, useIsCallerAdmin } from "../hooks/useQueries";
+import {
+  useGetApplications,
+  useIsCallerAdmin,
+  useUpdatePayoutStatus,
+} from "../hooks/useQueries";
 
 function formatDate(ns: bigint): string {
   const ms = Number(ns / 1_000_000n);
@@ -34,6 +53,159 @@ function formatDate(ns: bigint): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function PayoutMethodBadge({ method }: { method: PayoutMethod }) {
+  if (method.__kind__ === "btc") {
+    return (
+      <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/25 text-xs gap-1 whitespace-nowrap">
+        <Coins className="w-3 h-3" />
+        BTC
+      </Badge>
+    );
+  }
+  if (method.__kind__ === "paypal") {
+    return (
+      <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/25 text-xs gap-1 whitespace-nowrap">
+        <Mail className="w-3 h-3" />
+        PayPal
+      </Badge>
+    );
+  }
+  if (method.__kind__ === "giftCard") {
+    return (
+      <Badge className="bg-purple-500/15 text-purple-400 border-purple-500/25 text-xs gap-1 whitespace-nowrap">
+        <CreditCard className="w-3 h-3" />
+        Gift Card
+      </Badge>
+    );
+  }
+  return null;
+}
+
+function PayoutDetails({ method }: { method: PayoutMethod }) {
+  if (method.__kind__ === "btc") {
+    const addr = method.btc.address;
+    return (
+      <span className="font-mono text-xs text-white/70">
+        {addr.length > 8 ? `${addr.slice(0, 8)}…` : addr}
+      </span>
+    );
+  }
+  if (method.__kind__ === "paypal") {
+    return <span className="text-xs text-white/70">{method.paypal.email}</span>;
+  }
+  if (method.__kind__ === "giftCard") {
+    return (
+      <span className="text-xs text-white/70">
+        {method.giftCard.cardType} · {method.giftCard.email}
+      </span>
+    );
+  }
+  return null;
+}
+
+function PayoutStatusBadge({
+  status,
+}: {
+  status: Variant_pending_completed_processing;
+}) {
+  if (status === "pending") {
+    return (
+      <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/25 text-xs whitespace-nowrap">
+        ⏳ Pending
+      </Badge>
+    );
+  }
+  if (status === "processing") {
+    return (
+      <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/25 text-xs whitespace-nowrap">
+        🔄 Processing
+      </Badge>
+    );
+  }
+  if (status === "completed") {
+    return (
+      <Badge className="bg-green-500/15 text-green-400 border-green-500/25 text-xs whitespace-nowrap">
+        ✓ Completed
+      </Badge>
+    );
+  }
+  return null;
+}
+
+function PayoutStatusCell({
+  app,
+  index,
+}: {
+  app: Application;
+  index: number;
+}) {
+  const queryClient = useQueryClient();
+  const updatePayoutStatus = useUpdatePayoutStatus();
+  const [optimisticStatus, setOptimisticStatus] =
+    useState<Variant_pending_completed_processing | null>(null);
+
+  const currentStatus = optimisticStatus ?? app.payoutStatus;
+
+  const handleChange = async (
+    newStatus: Variant_pending_completed_processing,
+  ) => {
+    setOptimisticStatus(newStatus);
+    try {
+      await updatePayoutStatus.mutateAsync({
+        email: app.email,
+        position: app.position,
+        newStatus,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["applications"] });
+    } catch {
+      setOptimisticStatus(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 min-w-[140px]">
+      <PayoutStatusBadge status={currentStatus} />
+      <Select
+        value={currentStatus}
+        onValueChange={(val) =>
+          handleChange(val as Variant_pending_completed_processing)
+        }
+        disabled={updatePayoutStatus.isPending}
+      >
+        <SelectTrigger
+          className="h-7 text-xs bg-navy-deep/60 border-gold/20 text-white/70 focus:ring-gold/20 focus:border-gold w-full"
+          data-ocid={`admin.payout_status_select.${index}`}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="bg-navy border-gold/20">
+          <SelectItem
+            value="pending"
+            className="text-amber-400 focus:bg-amber-500/10 text-xs"
+          >
+            Pending
+          </SelectItem>
+          <SelectItem
+            value="processing"
+            className="text-blue-400 focus:bg-blue-500/10 text-xs"
+          >
+            Processing
+          </SelectItem>
+          <SelectItem
+            value="completed"
+            className="text-green-400 focus:bg-green-500/10 text-xs"
+          >
+            Completed
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      {updatePayoutStatus.isPending && (
+        <Loader2 className="w-3 h-3 animate-spin text-gold/50" />
+      )}
+    </div>
+  );
 }
 
 export default function AdminSection() {
@@ -222,6 +394,15 @@ export default function AdminSection() {
                             Message
                           </TableHead>
                           <TableHead className="text-gold/70 font-semibold text-xs uppercase tracking-wide">
+                            Payout Method
+                          </TableHead>
+                          <TableHead className="text-gold/70 font-semibold text-xs uppercase tracking-wide">
+                            Payout Details
+                          </TableHead>
+                          <TableHead className="text-gold/70 font-semibold text-xs uppercase tracking-wide">
+                            Payout Status
+                          </TableHead>
+                          <TableHead className="text-gold/70 font-semibold text-xs uppercase tracking-wide">
                             Date
                           </TableHead>
                         </TableRow>
@@ -249,6 +430,15 @@ export default function AdminSection() {
                             </TableCell>
                             <TableCell className="text-white/60 text-sm max-w-xs">
                               <p className="line-clamp-2">{app.message}</p>
+                            </TableCell>
+                            <TableCell>
+                              <PayoutMethodBadge method={app.payoutMethod} />
+                            </TableCell>
+                            <TableCell className="max-w-[180px]">
+                              <PayoutDetails method={app.payoutMethod} />
+                            </TableCell>
+                            <TableCell>
+                              <PayoutStatusCell app={app} index={i + 1} />
                             </TableCell>
                             <TableCell className="text-white/50 text-xs whitespace-nowrap">
                               {formatDate(app.submittedAt)}
