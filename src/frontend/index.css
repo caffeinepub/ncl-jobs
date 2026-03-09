@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Font Faces ─────────────────────────────────────────── */
+@font-face {
+  font-family: "Fraunces";
+  src: url("/assets/fonts/Fraunces.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/assets/fonts/CabinetGrotesk.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Design Tokens ──────────────────────────────────────── */
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Deep navy + warm gold maritime palette */
+    --background: 0.97 0.006 243;
+    --foreground: 0.18 0.03 245;
+
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.03 245;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.03 245;
+
+    /* Navy primary */
+    --primary: 0.25 0.08 248;
+    --primary-foreground: 0.98 0.01 90;
+
+    /* Gold accent */
+    --secondary: 0.82 0.16 82;
+    --secondary-foreground: 0.18 0.03 245;
+
+    --muted: 0.93 0.02 245;
+    --muted-foreground: 0.5 0.04 245;
+
+    --accent: 0.82 0.16 82;
+    --accent-foreground: 0.18 0.03 245;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 0.88 0.02 245;
+    --input: 0.88 0.02 245;
+    --ring: 0.25 0.08 248;
+
+    /* NCL custom tokens */
+    --navy: 0.2 0.09 248;
+    --navy-deep: 0.14 0.07 250;
+    --navy-mid: 0.28 0.08 248;
+    --gold: 0.78 0.18 78;
+    --gold-light: 0.88 0.14 88;
+    --gold-dark: 0.65 0.18 72;
+    --cream: 0.97 0.01 90;
+
+    --chart-1: 0.78 0.18 78;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+
+    --sidebar: 0.2 0.09 248;
+    --sidebar-foreground: 0.97 0.01 90;
+    --sidebar-primary: 0.78 0.18 78;
+    --sidebar-primary-foreground: 0.18 0.03 245;
+    --sidebar-accent: 0.28 0.08 248;
+    --sidebar-accent-foreground: 0.97 0.01 90;
+    --sidebar-border: 0.32 0.07 248;
+    --sidebar-ring: 0.78 0.18 78;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Cabinet Grotesk", system-ui, sans-serif;
+  }
+}
+
+/* ─── Utilities ──────────────────────────────────────────── */
+@layer utilities {
+  .font-display {
+    font-family: "Fraunces", Georgia, serif;
+  }
+
+  .text-gold {
+    color: oklch(var(--gold));
+  }
+
+  .text-gold-light {
+    color: oklch(var(--gold-light));
+  }
+
+  .bg-navy {
+    background-color: oklch(var(--navy));
+  }
+
+  .bg-navy-deep {
+    background-color: oklch(var(--navy-deep));
+  }
+
+  .bg-navy-mid {
+    background-color: oklch(var(--navy-mid));
+  }
+
+  .bg-gold {
+    background-color: oklch(var(--gold));
+  }
+
+  .border-gold {
+    border-color: oklch(var(--gold));
+  }
+
+  .border-gold-light {
+    border-color: oklch(var(--gold-light));
+  }
+
+  .gold-shimmer {
+    background: linear-gradient(
+      135deg,
+      oklch(var(--gold-dark)) 0%,
+      oklch(var(--gold)) 40%,
+      oklch(var(--gold-light)) 60%,
+      oklch(var(--gold)) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-overlay {
+    background: linear-gradient(
+      to bottom,
+      oklch(var(--navy-deep) / 0.55) 0%,
+      oklch(var(--navy-deep) / 0.35) 40%,
+      oklch(var(--navy-deep) / 0.75) 100%
+    );
+  }
+
+  .card-navy {
+    background: linear-gradient(
+      145deg,
+      oklch(var(--navy-mid)) 0%,
+      oklch(var(--navy)) 100%
+    );
+    border: 1px solid oklch(var(--gold) / 0.25);
+  }
+
+  .section-waves {
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, oklch(0.25 0.09 248 / 0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, oklch(0.78 0.18 78 / 0.06) 0%, transparent 50%);
+  }
+
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+}
