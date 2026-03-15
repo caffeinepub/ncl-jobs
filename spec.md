@@ -1,38 +1,35 @@
-# Norwegian Cruise Line Jobs
+# NCL Jobs
 
 ## Current State
-New project. No existing code.
+The site has a full application form with:
+- A $20 Stripe payment flow (redirects to Stripe checkout)
+- BTC payment option with QR code
+- Payout method selection (BTC, PayPal, Gift Card)
+- App.tsx handles Stripe session callbacks, payment verification, and submission gated behind payment
+- ConfirmationView shows payout summary after payment
 
 ## Requested Changes (Diff)
 
 ### Add
-- Landing/hero section promoting Norwegian Cruise Line high-paying job opportunities
-- Job listings section showcasing available positions with attractive pay details
-- Application form collecting:
-  - Full name
-  - Email address
-  - WhatsApp number
-  - Position of interest
-  - Short message / cover letter
-- $20 application fee payment via Stripe before form submission
-- Admin view to see submitted applications (with authorization)
-- Confirmation screen after successful payment and form submission
+- WhatsApp contact button/section with number +12028169872 so applicants can reach us directly
+- A prominent "Contact us on WhatsApp" CTA (link: https://wa.me/12028169872) visible in the form section and/or footer
 
 ### Modify
-N/A
+- ApplicationForm: remove all payment sections (BTC panel, Stripe note, payout method cards and fields, fee language in heading/subheading). Form should submit directly without payment.
+- ApplicationForm: update submit button to say "Submit Application" (no fee reference)
+- App.tsx: remove all Stripe session handling, payment state, payout state, and related imports. On form submit, call submitApplication directly (without paymentIntentId — pass empty string or omit if possible).
+- ConfirmationView: remove payout details section; simplify to just show name, position, and a thank-you message with the WhatsApp contact number for follow-up.
+- Section header: remove "— $20 Fee" from the heading and fee disclaimer from subheading.
 
 ### Remove
-N/A
+- All BTC payment UI and QR code image reference
+- All Stripe checkout session creation
+- All payout method selection (BTC/PayPal/Gift Card)
+- Payment error states in the form
+- Processing payment overlay in App.tsx
+- Fee-related assurance badges at the bottom of the form
 
 ## Implementation Plan
-1. Select `authorization`, `stripe` Caffeine components
-2. Generate Motoko backend with:
-   - `submitApplication(name, email, whatsapp, position, message, paymentIntentId)` -> stores application
-   - `getApplications()` -> admin only, returns all applications
-3. Frontend:
-   - Hero section with NCL branding, high-pay messaging, ship imagery
-   - Job listings cards (deck crew, hospitality, engineering, culinary, etc.)
-   - Application form with all required fields
-   - Stripe payment flow ($20 fee) gating form submission
-   - Success confirmation page
-   - Admin dashboard (logged-in view) showing applicant list
+1. Rewrite ApplicationForm.tsx: keep name/email/whatsapp/position/message fields; remove payout, BTC, Stripe sections; submit button says "Submit Application"; add WhatsApp contact link below the form.
+2. Rewrite App.tsx: remove Stripe/payment/payout logic; on form submit call submitApplication directly; simplified confirmation state.
+3. Rewrite ConfirmationView.tsx: remove payout details; show applicant name, position, and WhatsApp contact info for follow-up.
